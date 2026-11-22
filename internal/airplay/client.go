@@ -47,7 +47,7 @@ type ReceiverInfo struct {
 	HasUDPMirror                  bool                `plist:"hasUDPMirroringSupport"`
 	HDRCapability                 string              `plist:"receiverHDRCapability"`
 	VolumeControlType             int                 `plist:"volumeControlType"`
-	InitialVolume                 float64             `plist:"initialVolume"`
+	InitialVolume                 float64             `plist:"-"`
 	InitialMuted                  bool                `plist:"isMuted"`
 	InitialVolumeKnown            bool                `plist:"-"`
 	InitialMutedKnown             bool                `plist:"-"`
@@ -617,6 +617,38 @@ func (c *AirPlayClient) GetInfo() (*ReceiverInfo, error) {
 	return c.getInfoWithTimeout(0)
 }
 
+// plistNumberToFloat64 accepts any numeric type a plist decoder may produce.
+// Some receivers send integers where Apple devices send reals.
+func plistNumberToFloat64(v interface{}) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case float32:
+		return float64(n), true
+	case int:
+		return float64(n), true
+	case int8:
+		return float64(n), true
+	case int16:
+		return float64(n), true
+	case int32:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	case uint:
+		return float64(n), true
+	case uint8:
+		return float64(n), true
+	case uint16:
+		return float64(n), true
+	case uint32:
+		return float64(n), true
+	case uint64:
+		return float64(n), true
+	}
+	return 0, false
+}
+
 func (c *AirPlayClient) getInfoWithTimeout(timeout time.Duration) (*ReceiverInfo, error) {
 	resp, responseHeaders, err := c.httpRequestWithHeadersTimeout("GET", "/info", "application/x-apple-binary-plist", nil, timeout)
 	if err != nil {
@@ -647,7 +679,13 @@ func (c *AirPlayClient) getInfoWithTimeout(timeout time.Duration) (*ReceiverInfo
 	info.Server = responseHeaders["server"]
 	_, info.hasPTPInfo = fullInfo["PTPInfo"]
 	_, info.hasSupportedFormats = fullInfo["supportedFormats"]
-	_, info.InitialVolumeKnown = fullInfo["initialVolume"]
+	rawVolume, volumeKnown := fullInfo["initialVolume"]
+	info.InitialVolumeKnown = volumeKnown
+	if volumeKnown {
+		if v, ok := plistNumberToFloat64(rawVolume); ok {
+			info.InitialVolume = v
+		}
+	}
 	_, info.InitialMutedKnown = fullInfo["isMuted"]
 
 	c.mu.Lock()
@@ -725,8 +763,11 @@ func (c *AirPlayClient) applyReceiverInfoUpdate(update map[string]interface{}, s
 	if _, ok := update["PTPInfo"]; ok {
 		info.hasPTPInfo = true
 	}
-	if _, ok := update["initialVolume"]; ok {
+	if raw, ok := update["initialVolume"]; ok {
 		info.InitialVolumeKnown = true
+		if v, ok := plistNumberToFloat64(raw); ok {
+			info.InitialVolume = v
+		}
 	}
 	if _, ok := update["isMuted"]; ok {
 		info.InitialMutedKnown = true
