@@ -1325,12 +1325,6 @@ func (c *AirPlayClient) setupMirrorSessionAttempt(ctx context.Context, cfg Strea
 		},
 	}
 
-	// Encryption keys: shk/shiv go inside the video stream descriptor
-	if encKey != nil {
-		videoStreamDesc["shk"] = encKey
-		videoStreamDesc["shiv"] = encIV
-	}
-
 	// Audio SETUP has established the session in both negotiated orderings. The
 	// video request now attaches one stream and must not repeat session timing or
 	// FairPlay root material.
