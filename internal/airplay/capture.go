@@ -2194,6 +2194,20 @@ func selectGstEncoderWithProbe(cfg CaptureConfig, hasElement func(string) bool, 
 	}{
 		{
 			method:  "nvenc",
+			element: "nvcudah264enc",
+			label:   "NVENC hardware encoding (nvcudah264enc)",
+			result: encoderResult{rawFormat: "NV12", codec: VideoCodecH264, parts: []string{
+				"nvcudah264enc",
+				fmt.Sprintf("bitrate=%d", bitrate),
+				fmt.Sprintf("gop-size=%d", keyframeInterval),
+				"b-frames=0",
+				"rate-control=cbr",
+				"preset=p3",
+				"zero-reorder-delay=true",
+			}},
+		},
+		{
+			method:  "nvenc",
 			element: "nvh264enc",
 			label:   "NVENC hardware encoding (nvh264enc)",
 			result: encoderResult{rawFormat: "NV12", codec: VideoCodecH264, parts: []string{
@@ -2303,7 +2317,7 @@ func selectGstEncoderWithProbe(cfg CaptureConfig, hasElement func(string) bool, 
 		return encoderResult{}, fmt.Errorf("no supported GStreamer H.264 encoder is available")
 	}
 	if hwaccel == "nvenc" {
-		return encoderResult{}, fmt.Errorf("-hwaccel nvenc requires GStreamer element vulkanh264enc or nvh264enc; neither is available")
+		return encoderResult{}, fmt.Errorf("-hwaccel nvenc requires GStreamer element nvcudah264enc, vulkanh264enc or nvh264enc; none is available")
 	}
 	for _, candidate := range candidates {
 		if candidate.method == hwaccel {
